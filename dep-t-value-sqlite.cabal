@@ -26,7 +26,8 @@ common common
 library
   import: common
   exposed-modules:     Dep.Value
-                       Dep.Value.SQLite
+                       Dep.Loader
+                       Dep.Loader.SQLite
   hs-source-dirs:      lib 
 
 -- test-suite dep-t-test
