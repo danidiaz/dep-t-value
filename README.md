@@ -1,5 +1,9 @@
 # dep-t-value-sqlite
 
+Pair external resources with types within your program, and read values of such
+types from an SQLite database.
+
+Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework). 
 
 ## remember to add the resources to extra-source-files
 
