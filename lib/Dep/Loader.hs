@@ -16,6 +16,7 @@ import Data.Monoid
 import GHC.TypeLits (KnownSymbol, symbolVal)
 import Data.Proxy
 import Data.List.Split
+import Control.Exception ( Exception, throw )
 
 type DatatypeName = String
 
@@ -37,5 +38,18 @@ instance Monad m => Semigroup (Loader m) where
 instance Monad m => Monoid (Loader m) where  
     mempty = Loader \_ -> pure Nothing
 
+load :: Monad m => Loader m -> ResourceKey -> m (Maybe ByteString)
+load loader key = do
+    mb <- loadE loader key
+    case mb of 
+      Nothing -> throw (ResourceMissing key)
+      Just b -> pure (Just b)
+
 resourceKey :: forall a name mod p nt x . (G.Generic a, G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x, KnownSymbol name, KnownSymbol mod)  => ResourceKey
 resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
+
+newtype ResourceMissing = ResourceMissing ResourceKey deriving (Show)
+
+instance Exception ResourceMissing 
+
+
