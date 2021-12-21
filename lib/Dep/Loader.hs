@@ -22,7 +22,9 @@ type DatatypeName = String
 
 type ModuleName = String
 
-data ResourceKey = ResourceKey [ModuleName] DatatypeName deriving (Show, Eq, Ord)
+data ResourceKey = ResourceKey { 
+    modulePath :: [ModuleName] ,
+    datatypeName :: DatatypeName } deriving (Show, Eq, Ord)
 
 newtype Loader m = Loader {
         loadE :: ResourceKey -> m (Maybe ByteString)
