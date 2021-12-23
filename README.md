@@ -16,7 +16,11 @@ Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework).
 
 - the [data-dir](https://cabal.readthedocs.io/en/latest/cabal-package.html#pkg-field-data-dir) cabal field.
 
-- [Rework data-file handling to be file-embed-like?](https://github.com/haskell/cabal/issues/6096) 
+- [prefix-independence](https://cabal.readthedocs.io/en/latest/setup-commands.html#prefix-independence)
+
+- [Paths in the simple build system](https://cabal.readthedocs.io/en/latest/setup-commands.html?#paths-in-the-simple-build-system)
+
+- GitHub issue: [Rework data-file handling to be file-embed-like?](https://github.com/haskell/cabal/issues/6096) 
 
 - [file-embed: Use Template Haskell to embed file contents directly.](https://hackage.haskell.org/package/file-embed)
 
