@@ -1,9 +1,9 @@
 cabal-version:       3.0
 
-name:                dep-t-value-sqlite
+name:                dep-t-value
 version:             0.1.0.0
-synopsis:            Read resources from an SQLite database file.
-description:         Read resources from an SQLite database file.
+synopsis:            Read resources from data files.
+description:         Read resources from data files.
 license:             BSD-3-Clause
 license-file:        LICENSE
 author:              Daniel Diaz
@@ -13,7 +13,7 @@ extra-source-files:  CHANGELOG.md, README.md
 
 source-repository    head
   type:     git
-  location: https://github.com/danidiaz/dep-t-value-sqlite.git
+  location: https://github.com/danidiaz/dep-t-value.git
 
 common common
   build-depends:       base >=4.10.0.0 && < 5,
@@ -32,8 +32,9 @@ common common
 library
   import: common
   exposed-modules:     Dep.Value
+                       Dep.Value.Text
+                       Dep.Value.JSON
                        Dep.Loader
-                       Dep.Loader.SQLite
   hs-source-dirs:      lib 
 
 -- test-suite dep-t-test
