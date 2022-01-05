@@ -1,4 +1,4 @@
-# dep-t-value-sqlite
+# dep-t-value
 
 Pair external resources with types within your program.
 
@@ -41,5 +41,4 @@ Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework).
 - [file-embed: Use Template Haskell to embed file contents directly.](https://hackage.haskell.org/package/file-embed)
 
 - [data-embed: Embed files and other binary blobs inside executables without Template Haskell.](https://hackage.haskell.org/package/data-embed)
-
 
