@@ -1,57 +1,66 @@
-{-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Dep.Loader where
 
-import GHC.Generics qualified as G
-import Data.ByteString 
-import Data.Monoid
-import GHC.TypeLits (KnownSymbol, symbolVal)
-import Data.Proxy
+import Control.Exception (Exception, throw)
+import Data.ByteString
 import Data.List.Split
-import Control.Exception ( Exception, throw )
+import Data.Monoid
+import Data.Proxy
+import GHC.Generics qualified as G
+import GHC.TypeLits (KnownSymbol, symbolVal)
+
+newtype Loader m = Loader
+  { loadE :: ResourceKey -> FileExtension -> m (Maybe ByteString)
+  }
+  deriving (G.Generic)
+
+load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m (Maybe ByteString)
+load loader key ext = do
+  mb <- loadE loader key ext
+  case mb of
+    Nothing -> throw (ResourceMissing key)
+    Just b -> pure (Just b)
+
+instance Monad m => Semigroup (Loader m) where
+  l1 <> l2 = Loader \resourceKey ext -> do
+    mb <- loadE l1 resourceKey ext
+    case mb of
+      Nothing -> loadE l2 resourceKey ext
+      Just b -> pure (Just b)
+
+instance Monad m => Monoid (Loader m) where
+  mempty = Loader \_ _ -> pure Nothing
+
+data ResourceKey = ResourceKey
+  { modulePath :: [ModuleName],
+    datatypeName :: DatatypeName
+  }
+  deriving (Show, Eq, Ord)
 
 type DatatypeName = String
 
 type ModuleName = String
 
-data ResourceKey = ResourceKey { 
-    modulePath :: [ModuleName] ,
-    datatypeName :: DatatypeName } deriving (Show, Eq, Ord)
+type FileExtension = String
 
-newtype Loader m = Loader {
-        loadE :: ResourceKey -> m (Maybe ByteString)
-    } deriving G.Generic
-
-instance Monad m => Semigroup (Loader m) where
-  l1 <> l2 = Loader \resourceKey -> do
-    mb <- loadE l1 resourceKey
-    case mb of 
-      Nothing -> loadE l2 resourceKey
-      Just b -> pure (Just b)
-
-instance Monad m => Monoid (Loader m) where  
-    mempty = Loader \_ -> pure Nothing
-
-load :: Monad m => Loader m -> ResourceKey -> m (Maybe ByteString)
-load loader key = do
-    mb <- loadE loader key
-    case mb of 
-      Nothing -> throw (ResourceMissing key)
-      Just b -> pure (Just b)
-
-resourceKey :: forall a name mod p nt x . (G.Generic a, G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x, KnownSymbol name, KnownSymbol mod)  => ResourceKey
+resourceKey ::
+  forall a name mod p nt x.
+  ( G.Generic a,
+    G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x,
+    KnownSymbol name,
+    KnownSymbol mod
+  ) =>
+  ResourceKey
 resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
 newtype ResourceMissing = ResourceMissing ResourceKey deriving (Show)
 
-instance Exception ResourceMissing 
-
-
+instance Exception ResourceMissing
