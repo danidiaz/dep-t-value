@@ -35,6 +35,7 @@ library
                        Dep.Value.Text
                        Dep.Value.JSON
                        Dep.Loader
+                       Dep.Loader.Dir
   hs-source-dirs:      lib 
 
 -- test-suite dep-t-test
