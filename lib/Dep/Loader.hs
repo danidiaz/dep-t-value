@@ -7,10 +7,20 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Dep.Loader where
+module Dep.Loader
+  ( Loader (..),
+    load,
+    ResourceKey (..),
+    resourceKey,
+    DatatypeName,
+    ModuleName,
+    FileExtension,
+    ResourceMissing (..),
+  )
+where
 
 import Control.Exception (Exception, throw)
-import Data.ByteString
+import Data.ByteString (ByteString)
 import Data.List.Split
 import Data.Monoid
 import Data.Proxy
@@ -18,22 +28,22 @@ import GHC.Generics qualified as G
 import GHC.TypeLits (KnownSymbol, symbolVal)
 
 newtype Loader m = Loader
-  { loadE :: ResourceKey -> FileExtension -> m (Maybe ByteString)
+  { loadMaybe :: ResourceKey -> FileExtension -> m (Maybe ByteString)
   }
   deriving (G.Generic)
 
 load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m (Maybe ByteString)
 load loader key ext = do
-  mb <- loadE loader key ext
+  mb <- loadMaybe loader key ext
   case mb of
-    Nothing -> throw (ResourceMissing key)
+    Nothing -> throw (ResourceMissing key ext)
     Just b -> pure (Just b)
 
 instance Monad m => Semigroup (Loader m) where
   l1 <> l2 = Loader \resourceKey ext -> do
-    mb <- loadE l1 resourceKey ext
+    mb <- loadMaybe l1 resourceKey ext
     case mb of
-      Nothing -> loadE l2 resourceKey ext
+      Nothing -> loadMaybe l2 resourceKey ext
       Just b -> pure (Just b)
 
 instance Monad m => Monoid (Loader m) where
@@ -61,6 +71,6 @@ resourceKey ::
   ResourceKey
 resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
-newtype ResourceMissing = ResourceMissing ResourceKey deriving (Show)
+data ResourceMissing = ResourceMissing ResourceKey FileExtension deriving (Show)
 
 instance Exception ResourceMissing

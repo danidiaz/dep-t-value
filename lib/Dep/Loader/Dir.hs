@@ -1,6 +1,11 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
-module Dep.Loader.Dir where
+module Dep.Loader.Dir (
+    make,
+    DataDir,
+    dataDir,
+    extendDataDir
+) where
 
 import Dep.Loader
 import System.FilePath
