@@ -12,8 +12,8 @@
 module Dep.Loader
   ( Loader (..),
     load,
+    IsResource (..),
     ResourceKey (..),
-    resourceKey,
     DatatypeName,
     ModuleName,
     FileExtension,
