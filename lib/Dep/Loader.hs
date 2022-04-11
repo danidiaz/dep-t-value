@@ -32,12 +32,12 @@ newtype Loader m = Loader
   }
   deriving (G.Generic)
 
-load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m (Maybe ByteString)
+load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m ByteString
 load loader key ext = do
   mb <- loadMaybe loader key ext
   case mb of
     Nothing -> throw (ResourceMissing key ext)
-    Just b -> pure (Just b)
+    Just b -> pure b
 
 instance Monad m => Semigroup (Loader m) where
   l1 <> l2 = Loader \resourceKey ext -> do
