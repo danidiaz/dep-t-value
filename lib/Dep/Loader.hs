@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Dep.Loader
   ( Loader (..),
@@ -65,15 +66,12 @@ type FileExtension = String
 
 class IsResource a where
   resourceKey :: ResourceKey
-
-instance
-  ( G.Generic a,
-    G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x,
-    KnownSymbol name,
-    KnownSymbol mod
-  ) =>
-  IsResource a
-  where
+  default resourceKey :: forall a name mod p n nt x.
+      ( G.Generic a,
+        G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x,
+        KnownSymbol name,
+        KnownSymbol mod
+      ) => ResourceKey 
   resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
 data ResourceMissing = ResourceMissing ResourceKey FileExtension deriving (Show)
