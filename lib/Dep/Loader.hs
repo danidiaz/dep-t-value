@@ -2,10 +2,12 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Dep.Loader
   ( Loader (..),
@@ -61,15 +63,18 @@ type ModuleName = String
 
 type FileExtension = String
 
-resourceKey ::
-  forall a name mod p nt x.
+class IsResource a where
+  resourceKey :: ResourceKey
+
+instance
   ( G.Generic a,
     G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x,
     KnownSymbol name,
     KnownSymbol mod
   ) =>
-  ResourceKey
-resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
+  IsResource a
+  where
+  resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
 data ResourceMissing = ResourceMissing ResourceKey FileExtension deriving (Show)
 
