@@ -23,9 +23,6 @@ module Dep.Loader
     -- * Load resources by specifying routes.
     fromRoutes,
     ResourceRoute(..),
-    RouteDescription,
-    mandatory,
-    MandatoryResourceMissing(..),
     fileRoute,
     -- * Load resources by following the module structure.
     fromDataDir,
@@ -98,14 +95,12 @@ data ResourceNotFound = ResourceNotFound ResourceKey FileExtension deriving (Sho
 
 instance Exception ResourceNotFound
 
-type RouteDescription = String
-
-data ResourceRoute = ResourceRoute ResourceKey FileExtension (IO (Maybe ByteString)) RouteDescription
+data ResourceRoute = ResourceRoute ResourceKey FileExtension (IO (Maybe ByteString))
 
 fromRoutes :: MonadIO m => [ResourceRoute] -> Loader m
 fromRoutes routes = do
   let routes' :: [((ResourceKey,FileExtension), IO (Maybe ByteString))] 
-      routes' = routes <&> \(ResourceRoute key ext action _) -> ((key,ext), action)
+      routes' = routes <&> \(ResourceRoute key ext action) -> ((key,ext), action)
   let routeMap = Data.Map.Strict.fromList routes'
   Loader \key ext -> do
     case Data.Map.Strict.lookup (key,ext) routeMap of
@@ -114,27 +109,11 @@ fromRoutes routes = do
       Just action -> do
         liftIO action
 
-data MandatoryResourceMissing = MandatoryResourceMissing ResourceKey FileExtension RouteDescription deriving (Show)
-
-instance Exception MandatoryResourceMissing
-
-mandatory :: ResourceRoute -> ResourceRoute
-mandatory (ResourceRoute key ext action description) = do
-  let action' = do
-        mbytes <- action
-        case mbytes of
-          Nothing -> do
-            throwIO (MandatoryResourceMissing key ext description)
-          Just bytes -> do 
-            pure (Just bytes)
-  ResourceRoute key ext action' description
-
 fileRoute :: forall r. IsResource r => FilePath -> ResourceRoute
 fileRoute path = do
   let key = resourceKey @r
       ext = takeExtension path
-      description = "File route: " ++ path
-  ResourceRoute key ext (readFileMaybe path) description
+  ResourceRoute key ext (readFileMaybe path)
 
 -- | Function that completes a relative `FilePath` pointing to a data file, 
 -- and returns its absolute path.
