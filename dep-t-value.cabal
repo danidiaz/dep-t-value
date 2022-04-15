@@ -27,6 +27,7 @@ common common
                        split >= 0.2.3,
                        filepath >= 1.4.2.2,
                        directory >= 1.3.6.0,
+                       containers >= 0.6.5.1,
   default-language:    Haskell2010
 
 library

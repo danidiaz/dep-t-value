@@ -19,17 +19,23 @@ module Dep.Loader
     DatatypeName,
     ModuleName,
     FileExtension,
-    ResourceMissing (..),
-    -- * Load resources explicitly.
-    -- * Load resources from directory following the module structure.
-    dir,
+    ResourceNotFound (..),
+    -- * Load resources by specifying routes.
+    fromRoutes,
+    ResourceRoute(..),
+    RouteDescription,
+    mandatory,
+    MandatoryResourceMissing(..),
+    fileRoute,
+    -- * Load resources by following the module structure.
+    fromDataDir,
     DataDir,
-    base,
-    extendBase
+    dataDir,
+    extendDataDir
   )
 where
 
-import Control.Exception (Exception, throw)
+import Control.Exception (Exception, throw, throwIO)
 import Data.List.Split
 import Data.Monoid
 import Data.Proxy
@@ -38,8 +44,10 @@ import GHC.TypeLits (KnownSymbol, symbolVal)
 import System.FilePath
 import Control.Monad.IO.Class
 import System.Directory ( doesFileExist )
-
+import Data.Functor
+import Data.Map.Strict
 import Data.ByteString
+import Control.Monad.Trans.Maybe
 
 newtype Loader m = Loader
   { loadMaybe :: ResourceKey -> FileExtension -> m (Maybe ByteString)
@@ -50,9 +58,10 @@ load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m ByteString
 load loader key ext = do
   mb <- loadMaybe loader key ext
   case mb of
-    Nothing -> throw (ResourceMissing key ext)
+    Nothing -> throw (ResourceNotFound key ext)
     Just b -> pure b
 
+-- | The left 'Loader' is consulted first.
 instance Monad m => Semigroup (Loader m) where
   l1 <> l2 = Loader \resourceKey ext -> do
     mb <- loadMaybe l1 resourceKey ext
@@ -85,9 +94,47 @@ class IsResource a where
       ) => ResourceKey 
   resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
-data ResourceMissing = ResourceMissing ResourceKey FileExtension deriving (Show)
+data ResourceNotFound = ResourceNotFound ResourceKey FileExtension deriving (Show)
 
-instance Exception ResourceMissing
+instance Exception ResourceNotFound
+
+type RouteDescription = String
+
+data ResourceRoute = ResourceRoute ResourceKey FileExtension (IO (Maybe ByteString)) RouteDescription
+
+fromRoutes :: MonadIO m => [ResourceRoute] -> Loader m
+fromRoutes routes = do
+  let routes' :: [((ResourceKey,FileExtension), IO (Maybe ByteString))] 
+      routes' = routes <&> \(ResourceRoute key ext action _) -> ((key,ext), action)
+  let routeMap = Data.Map.Strict.fromList routes'
+  Loader \key ext -> do
+    case Data.Map.Strict.lookup (key,ext) routeMap of
+      Nothing -> do
+        pure Nothing
+      Just action -> do
+        liftIO action
+
+data MandatoryResourceMissing = MandatoryResourceMissing ResourceKey FileExtension RouteDescription deriving (Show)
+
+instance Exception MandatoryResourceMissing
+
+mandatory :: ResourceRoute -> ResourceRoute
+mandatory (ResourceRoute key ext action description) = do
+  let action' = do
+        mbytes <- action
+        case mbytes of
+          Nothing -> do
+            throwIO (MandatoryResourceMissing key ext description)
+          Just bytes -> do 
+            pure (Just bytes)
+  ResourceRoute key ext action' description
+
+fileRoute :: forall r. IsResource r => FilePath -> ResourceRoute
+fileRoute path = do
+  let key = resourceKey @r
+      ext = takeExtension path
+      description = "File route: " ++ path
+  ResourceRoute key ext (readFileMaybe path) description
 
 -- | Function that completes a relative `FilePath` pointing to a data file, 
 -- and returns its absolute path.
@@ -97,18 +144,22 @@ instance Exception ResourceMissing
 type DataDir = FilePath -> IO FilePath
 
 -- | Build a 'DataDir' out of a base directory path.
-base :: FilePath -> DataDir
-base dirPath filePath = pure (dirPath </> filePath)
+dataDir :: FilePath -> DataDir
+dataDir dirPath filePath = pure (dirPath </> filePath)
 
 -- | Given a relative path to a subdirectory of a 'DataDir', return a 'DataDir' 
 -- that completes paths within that subdirectory.
-extendBase :: FilePath -> DataDir -> DataDir
-extendBase relDir dataDir filePath = dataDir (relDir </> filePath)
+extendDataDir :: FilePath -> DataDir -> DataDir
+extendDataDir relDir dataDir filePath = dataDir (relDir </> filePath)
 
-dir :: MonadIO m => DataDir -> Loader m
-dir dataDir = Loader \ResourceKey {modulePath,datatypeName} fileExt -> liftIO do
+fromDataDir :: MonadIO m => DataDir -> Loader m
+fromDataDir base = Loader \ResourceKey {modulePath,datatypeName} fileExt -> liftIO do
     let relative = joinPath modulePath </> addExtension datatypeName fileExt
-    absolute <- dataDir relative
+    absolute <- base relative
+    readFileMaybe absolute
+
+readFileMaybe :: FilePath -> IO (Maybe ByteString)
+readFileMaybe absolute = do
     exists <- doesFileExist absolute
     if exists 
         then pure Nothing
