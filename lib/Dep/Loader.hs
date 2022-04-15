@@ -20,7 +20,8 @@ module Dep.Loader
     ModuleName,
     FileExtension,
     ResourceMissing (..),
-    -- * Load resource from directory following the module structure.
+    -- * Load resources explicitly.
+    -- * Load resources from directory following the module structure.
     dir,
     DataDir,
     base,
