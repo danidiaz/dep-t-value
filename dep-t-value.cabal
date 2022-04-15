@@ -32,10 +32,8 @@ common common
 library
   import: common
   exposed-modules:     Dep.Value
-                       Dep.Value.Text
-                       Dep.Value.JSON
+                       Dep.Value.Resource
                        Dep.Loader
-                       Dep.Loader.Dir
   hs-source-dirs:      lib 
 
 -- test-suite dep-t-test

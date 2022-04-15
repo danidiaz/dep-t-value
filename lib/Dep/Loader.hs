@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Dep.Loader
   ( Loader (..),
@@ -19,16 +20,25 @@ module Dep.Loader
     ModuleName,
     FileExtension,
     ResourceMissing (..),
+    -- * Load resource from directory following the module structure.
+    dir,
+    DataDir,
+    base,
+    extendBase
   )
 where
 
 import Control.Exception (Exception, throw)
-import Data.ByteString (ByteString)
 import Data.List.Split
 import Data.Monoid
 import Data.Proxy
 import GHC.Generics qualified as G
 import GHC.TypeLits (KnownSymbol, symbolVal)
+import System.FilePath
+import Control.Monad.IO.Class
+import System.Directory ( doesFileExist )
+
+import Data.ByteString
 
 newtype Loader m = Loader
   { loadMaybe :: ResourceKey -> FileExtension -> m (Maybe ByteString)
@@ -77,3 +87,28 @@ class IsResource a where
 data ResourceMissing = ResourceMissing ResourceKey FileExtension deriving (Show)
 
 instance Exception ResourceMissing
+
+-- | Function that completes a relative `FilePath` pointing to a data file, 
+-- and returns its absolute path.
+--
+-- The @getDataFileName@ function from @Paths_pkgname@ is a valid 'DataDir'. 
+-- You can also create a 'DataDir' by using 'dataDir'.
+type DataDir = FilePath -> IO FilePath
+
+-- | Build a 'DataDir' out of a base directory path.
+base :: FilePath -> DataDir
+base dirPath filePath = pure (dirPath </> filePath)
+
+-- | Given a relative path to a subdirectory of a 'DataDir', return a 'DataDir' 
+-- that completes paths within that subdirectory.
+extendBase :: FilePath -> DataDir -> DataDir
+extendBase relDir dataDir filePath = dataDir (relDir </> filePath)
+
+dir :: MonadIO m => DataDir -> Loader m
+dir dataDir = Loader \ResourceKey {modulePath,datatypeName} fileExt -> liftIO do
+    let relative = joinPath modulePath </> addExtension datatypeName fileExt
+    absolute <- dataDir relative
+    exists <- doesFileExist absolute
+    if exists 
+        then pure Nothing
+        else Just <$> Data.ByteString.readFile absolute
