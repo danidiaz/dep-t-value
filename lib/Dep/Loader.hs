@@ -2,17 +2,19 @@ module Dep.Loader
   ( 
     -- * Resource loader.
     Loader (..),
-    ResourceKey,
+    ResourceKey (..),
+    DatatypeName,
+    ModuleName,
     load,
     ResourceNotFound (..),
     -- * Datatypes tied to resources.
     FromResource (..),
-    -- * Loaders for known key sets.
+    -- * Loaders for maps of resources.
     resourceMapLoader,
     ResourceMap,
-    pick, 
-    pickMany,
-    file,
+    resource,
+    loaderResource, 
+    fileResource,
     -- * Loaders for resources in a directory.
     dataDirLoader,
     FileExtension,

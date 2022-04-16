@@ -36,12 +36,12 @@ import System.Console.GetOpt (getOpt)
 import Data.Foldable qualified
 
 newtype Loader m =
---  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
    Loader { loadMaybe :: ResourceKey -> m (Maybe ByteString) }
    deriving G.Generic
 
-load :: Monad m => Loader m -> ResourceKey -> m ByteString
-load loader key = do
+load :: forall r m . (FromResource r, Monad m) => Loader m -> m ByteString
+load loader = do
+  let key = resourceKey @r
   mb <- loadMaybe loader key
   case mb of
     Nothing -> throw $ ResourceNotFound key
@@ -49,7 +49,6 @@ load loader key = do
 
 -- | The left 'Loader' is consulted first.
 instance Monad m => Semigroup (Loader m) where
-  -- KnownKeysLoader l1 <> KnownKeysLoader l2 = KnownKeysLoader (l1 <> l2)
    Loader f <> Loader g = Loader \key -> do
      let Alt (MaybeT m) = (coerce f <> coerce g) key
      m
@@ -90,19 +89,19 @@ resourceMapLoader (ResourceMap mm) = Loader \key -> do
   let Alt (MaybeT action) =  Dep.Loader.Internal.findWithDefault mempty key mm
   action
 
-pick :: Loader m -> ResourceKey -> ResourceMap m
-pick loader key = do
+resource :: forall r m . FromResource r => m (Maybe ByteString) -> ResourceMap m
+resource action = do
+  let key = resourceKey @r
+  ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT action))
+
+loaderResource :: forall r m . FromResource r => Loader m -> ResourceMap m
+loaderResource loader = do
+  let key = resourceKey @r
   ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT (loadMaybe loader key)))
 
-pickMany :: (Foldable f, Monad m) => Loader m -> f ResourceKey -> ResourceMap m
-pickMany loader (Data.Foldable.toList -> keys) = do
-  foldMap (pick loader) keys
-
-
-file :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap m
-file path = do
+fileResource :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap m
+fileResource path = do
   let key = resourceKey @r
-      ext = takeExtension path
   ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT (readFileMaybe path)))
 
 -- | Function that completes a relative `FilePath` pointing to a data file,

@@ -63,7 +63,7 @@ json ::
   e ->
   Value v m
 json ctor (dep -> loader) = Value do
-  bytes <- load loader (resourceKey @v)
+  bytes <- load @v loader 
   case Data.Aeson.eitherDecodeStrict' bytes of
     Left errMsg -> throw (JSONResourceDecodeError (resourceKey @v) errMsg)
     Right v -> pure v
@@ -82,7 +82,7 @@ text ::
   e ->
   Value v m
 text ctor (dep -> loader) = Value do
-  bytes <- load loader (resourceKey @v)
+  bytes <- load @v loader 
   case decodeUtf8' bytes of
     Left uex -> throw (TextResourceDecodeError (resourceKey @v) uex)
     Right v -> pure (ctor v)
