@@ -1,6 +1,7 @@
 # dep-t-value
 
-Pair external resources with types within your program.
+
+Pair resources files with types within your program.
 
 Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework). 
 

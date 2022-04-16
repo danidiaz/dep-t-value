@@ -2,8 +2,8 @@ cabal-version:       3.0
 
 name:                dep-t-value
 version:             0.1.0.0
-synopsis:            Read resources from data files.
-description:         Read resources from data files.
+synopsis:            Pair resources files with types within your program.
+description:         Pair resources files with types within your program.
 license:             BSD-3-Clause
 license-file:        LICENSE
 author:              Daniel Diaz
@@ -33,8 +33,9 @@ common common
 library
   import: common
   exposed-modules:     Dep.Value
-                       Dep.Value.Basic
-                       Dep.Loader
+                       Dep.Value.Cached
+                       Dep.Resource
+                       Dep.Resource.Loader
   hs-source-dirs:      lib 
 
 test-suite dep-t-value-test

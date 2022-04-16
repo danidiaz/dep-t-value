@@ -16,8 +16,8 @@ import Test.Tasty.HUnit
 
 import Dep.Env
 import Dep.Value
-import Dep.Value.Basic
-import Dep.Loader
+import Dep.Value.Cached
+import Dep.Resource.Loader
 import Data.Functor.Identity
 import Data.Text
 import Data.ByteString

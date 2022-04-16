@@ -14,8 +14,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 
-module Dep.Loader
+module Dep.Resource.Loader
   ( 
     -- * Resource loader.
     Loader (..),
@@ -41,7 +42,13 @@ module Dep.Loader
     DataDir,
     dataDir,
     extendDataDir,
-    -- * Internals
+    -- * building 'Value's
+    fromResource,
+    fromJSONResource,
+    JSONResourceDecodeError (..),
+    fromUtf8TextResource,
+    TextResourceDecodeError (..),
+    -- * Internals.
     readFileMaybe,
     MonoidalMap (..)
   )
@@ -67,7 +74,13 @@ import Data.Foldable qualified
 import Data.Typeable
 import Data.Proxy
 import System.Environment (lookupEnv)
-
+import Dep.Has
+import Dep.Value
+import Data.Aeson qualified 
+import Data.Text
+import Data.Text.Encoding (decodeUtf8')
+import Data.Text.Encoding.Error
+import Data.List.Split
 
 newtype Loader v m =
    Loader { loadMaybe :: ResourceKey -> m (Maybe v) }
@@ -124,7 +137,7 @@ class FromResource a where
       KnownSymbol mod
     ) =>
     ResourceKey
-  resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
+  resourceKey = ResourceKey (Data.List.Split.splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
 data ResourceNotFound = ResourceNotFound TypeRep ResourceKey TypeRep deriving (Show)
 
@@ -220,3 +233,55 @@ instance (Ord k, Semigroup a) => Monoid (MonoidalMap k a) where
   mempty = MonoidalMap mempty
   {-# INLINE mempty #-}
 
+
+fromResource ::
+  forall r m e.
+  ( Has (Loader r) m e,
+    Typeable r,
+    FromResource r,
+    Monad m
+  ) =>
+  e ->
+  Value r m
+fromResource (dep -> loader) = Value do
+  load @r loader
+
+fromJSONResource ::
+  forall r m e.
+  ( Has (Loader ByteString) m e,
+    Typeable r,
+    FromResource r,
+    Data.Aeson.FromJSON r,
+    Monad m
+  ) =>
+  e ->
+  Value r m
+fromJSONResource (dep -> loader) = Value do
+  bytes <- load @r loader 
+  case Data.Aeson.eitherDecodeStrict' bytes of
+    Left errMsg -> throw (JSONResourceDecodeError (typeRep (Proxy @r)) (resourceKey @r) errMsg)
+    Right r -> pure r
+
+data JSONResourceDecodeError = JSONResourceDecodeError TypeRep ResourceKey String deriving (Show)
+
+instance Exception JSONResourceDecodeError
+
+fromUtf8TextResource ::
+  forall r m e.
+  ( Has (Loader ByteString) m e,
+    Typeable r,
+    FromResource r,
+    Monad m
+  ) =>
+  (Text -> r) ->
+  e ->
+  Value r m
+fromUtf8TextResource ctor (dep -> loader) = Value do
+  bytes <- load @r loader
+  case decodeUtf8' bytes of
+    Left uex -> throw (TextResourceDecodeError (typeRep (Proxy @r)) (resourceKey @r) uex)
+    Right v -> pure (ctor v)
+
+data TextResourceDecodeError = TextResourceDecodeError TypeRep ResourceKey UnicodeException deriving (Show)
+
+instance Exception TextResourceDecodeError

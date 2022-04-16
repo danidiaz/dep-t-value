@@ -1,7 +1,10 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Dep.Value where
+module Dep.Value (
+       -- * A provider of values.
+        Value (..)
+    ) where
 import GHC.Generics qualified as G
 
 newtype Value v m = Value { 
