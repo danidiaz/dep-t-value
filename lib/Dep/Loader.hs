@@ -1,10 +1,8 @@
 module Dep.Loader
   ( 
     -- * Resource loader.
-    Loader,
+    Loader (..),
     ResourceKey,
-    FileExtension,
-    loadMaybe,
     load,
     ResourceNotFound (..),
     -- * Datatypes tied to resources.
@@ -12,9 +10,12 @@ module Dep.Loader
     -- * Designate specific files as resources.
     resourceMapLoader,
     ResourceMap,
-    fileResource,
+    pick, 
+    pickMany,
+    file,
     -- * Search for resources in a directory.
     dataDirLoader,
+    FileExtension,
     DataDir,
     dataDir,
     extendDataDir,
