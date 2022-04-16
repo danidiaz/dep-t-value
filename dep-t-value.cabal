@@ -33,7 +33,7 @@ common common
 library
   import: common
   exposed-modules:     Dep.Value
-                       Dep.Value.Resource
+                       Dep.Value.Basic
                        Dep.Loader
                        Dep.Loader.Internal
   hs-source-dirs:      lib 

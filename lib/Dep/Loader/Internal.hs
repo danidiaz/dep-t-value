@@ -25,22 +25,11 @@ import GHC.Generics qualified as G
 import GHC.TypeLits (KnownSymbol, symbolVal)
 import System.Directory (doesFileExist)
 import System.FilePath
+import Data.Coerce
 
-data Loader m
-  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
-  | Loader (ResourceKey -> FileExtension -> Alt (MaybeT m) ByteString)
-
-loadMaybe :: Monad m => Loader m -> ResourceKey -> FileExtension -> m (Maybe ByteString)
-loadMaybe loader key ext = do
-  let Alt (MaybeT action) = loadMaybe' loader key ext
-  action
-
-loadMaybe' :: Monad m => Loader m -> ResourceKey -> FileExtension -> Alt (MaybeT m) ByteString
-loadMaybe' loader key ext = case loader of
-  KnownKeysLoader mm -> do
-    Dep.Loader.Internal.findWithDefault mempty (key, ext) mm
-  Loader f -> do
-    f key ext
+newtype Loader m =
+--  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
+   Loader { loadMaybe :: ResourceKey -> FileExtension -> m (Maybe ByteString) }
 
 load :: Monad m => Loader m -> ResourceKey -> FileExtension -> m ByteString
 load loader key ext = do
@@ -51,11 +40,13 @@ load loader key ext = do
 
 -- | The left 'Loader' is consulted first.
 instance Monad m => Semigroup (Loader m) where
-  KnownKeysLoader l1 <> KnownKeysLoader l2 = KnownKeysLoader (l1 <> l2)
-  l1 <> l2 = Loader (loadMaybe' l1 <> loadMaybe' l2)
+  -- KnownKeysLoader l1 <> KnownKeysLoader l2 = KnownKeysLoader (l1 <> l2)
+   Loader f <> Loader g = Loader \key ext -> do
+     let Alt (MaybeT m) = (coerce f <> coerce g) key ext
+     m
 
 instance Monad m => Monoid (Loader m) where
-  mempty = KnownKeysLoader mempty
+  mempty = Loader \_ _ -> pure Nothing
 
 data ResourceKey = ResourceKey
   { modulePath :: [ModuleName],
@@ -69,7 +60,7 @@ type ModuleName = String
 
 type FileExtension = String
 
-class IsResource a where
+class FromResource a where
   resourceKey :: ResourceKey
   default resourceKey ::
     forall a name mod p n nt x.
@@ -85,11 +76,16 @@ data ResourceNotFound = ResourceNotFound ResourceKey FileExtension deriving (Sho
 
 instance Exception ResourceNotFound
 
-file :: forall r m. (IsResource r, MonadIO m) => FilePath -> Loader m
-file path = do
+resourceMapLoader :: Monad m => ResourceMap m -> Loader m
+resourceMapLoader rmap = Loader \key ext -> do
+  let Alt (MaybeT action) =  Dep.Loader.Internal.findWithDefault mempty (key, ext) rmap
+  action
+
+fileResource :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap m
+fileResource path = do
   let key = resourceKey @r
       ext = takeExtension path
-  KnownKeysLoader $ Dep.Loader.Internal.singleton (key, ext) (Alt (MaybeT (readFileMaybe path)))
+  Dep.Loader.Internal.singleton (key, ext) (Alt (MaybeT (readFileMaybe path)))
 
 -- | Function that completes a relative `FilePath` pointing to a data file,
 -- and returns its absolute path.
@@ -107,16 +103,12 @@ dataDir dirPath filePath = pure (dirPath </> filePath)
 extendDataDir :: FilePath -> DataDir -> DataDir
 extendDataDir relDir dataDir filePath = dataDir (relDir </> filePath)
 
-fromDir :: MonadIO m => DataDir -> Loader m
-fromDir base = Loader \ResourceKey {modulePath, datatypeName} fileExt -> do
+dataDirLoader :: MonadIO m => DataDir -> Loader m
+dataDirLoader base = Loader \ResourceKey {modulePath, datatypeName} fileExt -> do
   let relative = joinPath modulePath </> addExtension datatypeName fileExt
-  Alt
-    ( MaybeT
-        ( do
-            absolute <- liftIO $ base relative
-            readFileMaybe absolute
-        )
-    )
+  do
+     absolute <- liftIO $ base relative
+     readFileMaybe absolute
 
 readFileMaybe :: MonadIO m => FilePath -> m (Maybe ByteString)
 readFileMaybe absolute = do
@@ -127,6 +119,8 @@ readFileMaybe absolute = do
     else do
       bytes <- liftIO $ Data.ByteString.readFile absolute
       pure (Just bytes)
+
+type ResourceMap m = MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString)
 
 newtype MonoidalMap k a = MonoidalMap {getMonoidalMap :: Map.Map k a}
   deriving (Show, Read)

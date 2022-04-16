@@ -8,11 +8,13 @@ module Dep.Loader
     load,
     ResourceNotFound (..),
     -- * Datatypes tied to resources.
-    IsResource (..),
+    FromResource (..),
     -- * Designate specific files as resources.
-    file,
+    resourceMapLoader,
+    ResourceMap,
+    fileResource,
     -- * Search for resources in a directory.
-    fromDir,
+    dataDirLoader,
     DataDir,
     dataDir,
     extendDataDir,

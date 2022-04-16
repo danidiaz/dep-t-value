@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Dep.Value.Resource
+module Dep.Value.Basic
   ( -- * cache a value
     Ref,
     allocateRef,
@@ -56,7 +56,7 @@ json ::
   forall m e v.
   ( Has Loader m e,
     Monad m,
-    IsResource v,
+    FromResource v,
     Data.Aeson.FromJSON v
   ) =>
   v ->
@@ -76,7 +76,7 @@ text ::
   forall m e v.
   ( Has Loader m e,
     Monad m,
-    IsResource v
+    FromResource v
   ) =>
   (Text -> v) ->
   e ->
