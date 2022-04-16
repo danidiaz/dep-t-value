@@ -42,6 +42,7 @@ module Dep.Loader
     dataDir,
     extendDataDir,
     -- * Internals
+    readFileMaybe,
     MonoidalMap (..)
   )
 where
@@ -176,8 +177,8 @@ dataDir dirPath filePath = pure (dirPath </> filePath)
 
 -- | Given a relative path to a subdirectory of a 'DataDir', return a 'DataDir'
 -- that completes paths within that subdirectory.
-extendDataDir :: FilePath -> DataDir -> DataDir
-extendDataDir relDir dataDir filePath = dataDir (relDir </> filePath)
+extendDataDir :: DataDir -> FilePath -> DataDir
+extendDataDir dataDir relDir filePath = dataDir (relDir </> filePath)
 
 dataDirLoader :: MonadIO m => [FileExtension] -> DataDir -> Loader ByteString m
 dataDirLoader extensions base = Loader \ResourceKey {modulePath, datatypeName} -> do

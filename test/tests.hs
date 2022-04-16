@@ -8,6 +8,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeApplications #-}
 module Main where
 
 import Test.Tasty
@@ -30,16 +31,29 @@ tests =
   testGroup
     "All"
     [    
-        testCase "loadUtf8" textResourceLoads
+        testCase "loadUtf8" textResourceLoads,
+        testCase "loadUtf8Precedencie" textResourcePrecedence
     ]
 
 textResourceLoads :: Assertion
 textResourceLoads = do
     let loader :: Loader ByteString IO 
-        loader = dataDirLoader ["txt"] $ dataDir "test/conf/" 
+        loader = dataDirLoader ["zzz","txt"] $ dataDir "test" `extendDataDir` "conf"
         v = fromUtf8TextResource Identity (loader `addDep` emptyEnv)
     Identity txt <- value v
     assertEqual "text loaded correctly" (Data.Text.pack "Lorem Ipsum") txt
+
+textResourcePrecedence :: Assertion
+textResourcePrecedence = do
+    let loader :: Loader ByteString IO 
+        loader = dataDirLoader ["zzz","txt"] $ dataDir "test" `extendDataDir` "conf"
+        loader2 = resourceMapLoader 
+                        (fileResource @(Identity Text) "test/conf/Identity2.txt"  
+                            <> fileResource @(Identity Text) "test/conf/Identity3.txt")
+                  <> loader
+        v = fromUtf8TextResource Identity (loader2 `addDep` emptyEnv)
+    Identity txt <- value v
+    assertEqual "text loaded correctly" (Data.Text.pack "foo") txt
 
 
 main :: IO ()
