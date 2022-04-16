@@ -7,13 +7,13 @@ module Dep.Loader
     ResourceNotFound (..),
     -- * Datatypes tied to resources.
     FromResource (..),
-    -- * Designate specific files as resources.
+    -- * Loaders for known key sets.
     resourceMapLoader,
     ResourceMap,
     pick, 
     pickMany,
     file,
-    -- * Search for resources in a directory.
+    -- * Loaders for resources in a directory.
     dataDirLoader,
     FileExtension,
     DataDir,
