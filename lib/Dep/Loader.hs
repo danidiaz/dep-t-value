@@ -24,14 +24,17 @@ module Dep.Loader
     ModuleName,
     load,
     ResourceNotFound (..),
+    mapLoader,
     -- * Datatypes tied to resources.
     FromResource (..),
     -- * Loaders for maps of resources.
     resourceMapLoader,
     ResourceMap (..),
     resource,
+    pureResource,
     loaderResource, 
     fileResource,
+    envVarResource,
     -- * Loaders for resources in a directory.
     dataDirLoader,
     FileExtension,
@@ -60,20 +63,33 @@ import Data.Coerce
 import GHC.Generics qualified
 import System.Console.GetOpt (getOpt)
 import Data.Foldable qualified
-
+import Data.Typeable
+import Data.Proxy
+import System.Environment (lookupEnv)
 
 
 newtype Loader v m =
---  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
    Loader { loadMaybe :: ResourceKey -> m (Maybe v) }
    deriving G.Generic
 
-load :: Monad m => Loader v m -> ResourceKey -> m v
-load loader key = do
+-- | Throws 'ResourceNotFound'.
+load :: forall r v m . (FromResource r, Typeable r, Typeable v, Monad m) => Loader v m -> m v
+load loader = do
+  let key = resourceKey @r
   mb <- loadMaybe loader key
   case mb of
-    Nothing -> throw $ ResourceNotFound key
+    Nothing -> throw $ ResourceNotFound (typeRep (Proxy @r)) key (typeRep (Proxy @v)) 
     Just b -> pure b
+
+mapLoader :: Monad m => (ResourceKey -> v -> m w) -> Loader v m -> Loader w m
+mapLoader f (Loader l) = Loader \key -> do
+  mv <- l key
+  case mv of
+    Nothing -> do 
+      pure Nothing
+    Just v -> do
+      w <- f key v 
+      pure $ Just w
 
 -- | The left 'Loader' is consulted first.
 instance Monad m => Semigroup (Loader v m) where
@@ -109,7 +125,7 @@ class FromResource a where
     ResourceKey
   resourceKey = ResourceKey (splitOn "." (symbolVal (Proxy @mod))) (symbolVal (Proxy @name))
 
-newtype ResourceNotFound = ResourceNotFound ResourceKey deriving (Show)
+data ResourceNotFound = ResourceNotFound TypeRep ResourceKey TypeRep deriving (Show)
 
 instance Exception ResourceNotFound
 
@@ -130,6 +146,9 @@ resource action = do
   singleton :: k -> a -> MonoidalMap k a
   singleton k a = MonoidalMap $ Map.singleton k a
 
+pureResource :: forall r v m. (Applicative m, FromResource r) => v -> ResourceMap v m
+pureResource v = resource @r @v (pure $ Just v)
+
 -- | Pick a resource from an existing 'Loader', usually for the purpose of
 -- giving it special treatment.
 loaderResource :: forall r v m . FromResource r => Loader v m -> ResourceMap v m
@@ -139,6 +158,10 @@ loaderResource loader = do
 fileResource :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap ByteString m
 fileResource path = do
   resource @r (readFileMaybe path)
+
+envVarResource :: forall r m . (FromResource r, MonadIO m) => String -> ResourceMap String m
+envVarResource varName = do
+  resource @r (liftIO $ lookupEnv varName)
 
 -- | Function that completes a relative `FilePath` pointing to a data file,
 -- and returns its absolute path.

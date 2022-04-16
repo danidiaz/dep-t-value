@@ -34,6 +34,8 @@ import Dep.Has
 import Dep.Loader
 import Dep.Value
 import Data.ByteString
+import Data.Typeable
+import Data.Proxy
 
 type Ref v = MVar (Maybe v)
 
@@ -53,50 +55,53 @@ cache ref Value {value} = Value do
       pure (Just v, v)
 
 fromResource ::
-  forall v m e.
-  ( Has (Loader v) m e,
-    FromResource v,
+  forall r m e.
+  ( Has (Loader r) m e,
+    Typeable r,
+    FromResource r,
     Monad m
   ) =>
   e ->
-  Value v m
+  Value r m
 fromResource (dep -> loader) = Value do
-  load loader (resourceKey @v)
+  load @r loader
 
 fromJSONResource ::
-  forall v m e.
+  forall r m e.
   ( Has (Loader ByteString) m e,
-    FromResource v,
-    Data.Aeson.FromJSON v,
+    Typeable r,
+    FromResource r,
+    Data.Aeson.FromJSON r,
     Monad m
   ) =>
   e ->
-  Value v m
+  Value r m
 fromJSONResource (dep -> loader) = Value do
-  bytes <- load loader (resourceKey @v)
+  bytes <- load @r loader 
   case Data.Aeson.eitherDecodeStrict' bytes of
-    Left errMsg -> throw (JSONResourceDecodeError (resourceKey @v) errMsg)
-    Right v -> pure v
+    Left errMsg -> throw (JSONResourceDecodeError (typeRep (Proxy @r)) (resourceKey @r) errMsg)
+    Right r -> pure r
 
-data JSONResourceDecodeError = JSONResourceDecodeError ResourceKey String deriving (Show)
+data JSONResourceDecodeError = JSONResourceDecodeError TypeRep ResourceKey String deriving (Show)
 
 instance Exception JSONResourceDecodeError
 
 fromUtf8TextResource ::
-  forall v m e.
+  forall r m e.
   ( Has (Loader ByteString) m e,
-    FromResource v,
+    Typeable r,
+    FromResource r,
     Monad m
   ) =>
-  (Text -> v) ->
+  (Text -> r) ->
   e ->
-  Value v m
+  Value r m
 fromUtf8TextResource ctor (dep -> loader) = Value do
-  bytes <- load loader (resourceKey @v)
+  bytes <- load @r loader
   case decodeUtf8' bytes of
-    Left uex -> throw (TextResourceDecodeError (resourceKey @v) uex)
+    Left uex -> throw (TextResourceDecodeError (typeRep (Proxy @r)) (resourceKey @r) uex)
     Right v -> pure (ctor v)
 
-data TextResourceDecodeError = TextResourceDecodeError ResourceKey UnicodeException deriving (Show)
+data TextResourceDecodeError = TextResourceDecodeError TypeRep ResourceKey UnicodeException deriving (Show)
 
 instance Exception TextResourceDecodeError
