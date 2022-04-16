@@ -53,17 +53,27 @@ cache ref Value {value} = Value do
       v <- run value
       pure (Just v, v)
 
+fromResource ::
+  forall v m e.
+  ( Has (Loader v) m e,
+    FromResource v,
+    Monad m
+  ) =>
+  e ->
+  Value v m
+fromResource (dep -> loader) = Value do
+  load loader (resourceKey @v)
+
 fromJSONResource ::
   forall v m e.
   ( Has (Loader ByteString) m e,
-    Monad m,
     FromResource v,
-    Data.Aeson.FromJSON v
+    Data.Aeson.FromJSON v,
+    Monad m
   ) =>
-  v ->
   e ->
   Value v m
-fromJSONResource ctor (dep -> loader) = Value do
+fromJSONResource (dep -> loader) = Value do
   bytes <- load loader (resourceKey @v)
   case Data.Aeson.eitherDecodeStrict' bytes of
     Left errMsg -> throw (JSONResourceDecodeError (resourceKey @v) errMsg)
@@ -76,8 +86,8 @@ instance Exception JSONResourceDecodeError
 fromUtf8TextResource ::
   forall v m e.
   ( Has (Loader ByteString) m e,
-    Monad m,
-    FromResource v
+    FromResource v,
+    Monad m
   ) =>
   (Text -> v) ->
   e ->
