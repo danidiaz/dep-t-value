@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
 import Test.Tasty
@@ -22,6 +24,9 @@ import Data.Functor.Identity
 import Data.Text
 import Data.ByteString
 import GHC.Generics qualified as G
+import Data.IORef
+import Control.Exception
+import Control.Monad.Trans.Cont
 
 -- Orphan instance, just for tests.
 deriving anyclass instance FromResource (Identity Text)
@@ -32,7 +37,8 @@ tests =
     "All"
     [    
         testCase "loadUtf8" textResourceLoads,
-        testCase "loadUtf8Precedencie" textResourcePrecedence
+        testCase "loadUtf8Precedence" textResourcePrecedence,
+        testCase "valueIsCached" valueIsCached
     ]
 
 textResourceLoads :: Assertion
@@ -55,6 +61,18 @@ textResourcePrecedence = do
     Identity txt <- value v
     assertEqual "text loaded correctly" (Data.Text.pack "foo") txt
 
+valueIsCached :: Assertion
+valueIsCached = do
+  let bombs = pure () : repeat (throwIO $ userError "boom!")
+  bombsRef <- newIORef @[IO ()] bombs
+  let attempt = do
+        action <- atomicModifyIORef bombsRef \(b : bs) -> (bs, b)
+        action
+  runContT allocateRef \valueRef -> do
+    let v :: Value () IO = Dep.Value.Cached.cache valueRef $ Value attempt
+    () <- value v
+    () <- value v
+    pure ()
 
 main :: IO ()
 main = defaultMain tests

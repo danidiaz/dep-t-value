@@ -5,7 +5,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
-
+-- | Cache 'Value's to avoid repeated calls to the underlying value-obtaining action, which migh be expensive.
+--
+-- Typically, this module only needs to be imported when creating the global application environment.
 module Dep.Value.Cached
   ( 
     -- * caching 'Value's

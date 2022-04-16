@@ -1,9 +1,22 @@
 # dep-t-value
 
-
 Pair resources files with types within your program.
 
 Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework). 
+
+## How to use
+
+- Take a datatype that you want to associate to a resource file, and derive a `Dep.Resource.FromResource` instance for it.
+
+- Make your program logic take a `Value yourdatatype` record.
+
+- When assembling the global application environment, either
+
+    - Use `dataDirLoader` to define a `Loader` that searches for resource files by following the datatype's module path, and uses the dataype's name as file name.
+
+    - Use `resourceMapLoader` and `fileResource` to explicitly pair a resource file with your datatype. 
+
+- Finally, "wire" the `Value yourdatatype` by using `fromResource`, `fromJSONResource` or similar functions.
 
 ## Links
 
