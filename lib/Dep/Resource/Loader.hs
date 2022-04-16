@@ -127,6 +127,9 @@ type ModuleName = String
 
 type FileExtension = String
 
+-- | Class for datatypes tied to resources.
+--
+-- Derive it with @DeriveAnyClass@. The datatype must have a "GHC.Generics.Generic" instance.
 class FromResource a where
   resourceKey :: ResourceKey
   default resourceKey ::
