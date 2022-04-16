@@ -35,7 +35,6 @@ library
   exposed-modules:     Dep.Value
                        Dep.Value.Basic
                        Dep.Loader
-                       Dep.Loader.Internal
   hs-source-dirs:      lib 
 
 -- test-suite dep-t-test

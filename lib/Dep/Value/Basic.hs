@@ -7,18 +7,17 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Dep.Value.Basic
-  ( -- * cache a value
+  ( 
+    -- * building 'Value's
+    fromResource,
+    fromJSONResource,
+    JSONResourceDecodeError (..),
+    fromUtf8TextResource,
+    TextResourceDecodeError (..),
+    -- * caching 'Value's
     Ref,
     allocateRef,
     cache,
-
-    -- * JSON resources
-    fromJSONResource,
-    JSONResourceDecodeError (..),
-
-    -- * text resources
-    fromUtf8TextResource,
-    TextResourceDecodeError (..),
   )
 where
 
