@@ -36,12 +36,12 @@ import System.Console.GetOpt (getOpt)
 import Data.Foldable qualified
 
 newtype Loader m =
+--  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
    Loader { loadMaybe :: ResourceKey -> m (Maybe ByteString) }
    deriving G.Generic
 
-load :: forall r m . (FromResource r, Monad m) => Loader m -> m ByteString
-load loader = do
-  let key = resourceKey @r
+load :: Monad m => Loader m -> ResourceKey -> m ByteString
+load loader key = do
   mb <- loadMaybe loader key
   case mb of
     Nothing -> throw $ ResourceNotFound key
@@ -49,6 +49,7 @@ load loader = do
 
 -- | The left 'Loader' is consulted first.
 instance Monad m => Semigroup (Loader m) where
+  -- KnownKeysLoader l1 <> KnownKeysLoader l2 = KnownKeysLoader (l1 <> l2)
    Loader f <> Loader g = Loader \key -> do
      let Alt (MaybeT m) = (coerce f <> coerce g) key
      m
