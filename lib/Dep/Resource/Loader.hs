@@ -42,7 +42,7 @@ module Dep.Resource.Loader
     DataDir,
     dataDir,
     extendDataDir,
-    -- * building 'Value's
+    -- * Building 'Value's.
     fromResource,
     fromJSONResource,
     JSONResourceDecodeError (..),
