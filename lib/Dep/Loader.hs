@@ -116,7 +116,7 @@ type FileExtension = String
 class FromResource a where
   resourceKey :: ResourceKey
   default resourceKey ::
-    forall a name mod p n nt x.
+    forall name mod p n nt x.
     ( G.Generic a,
       G.Rep a ~ G.D1 ('G.MetaData name mod p nt) x,
       KnownSymbol name,
