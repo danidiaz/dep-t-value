@@ -13,11 +13,11 @@ module Dep.Value.Basic
     cache,
 
     -- * JSON resources
-    json,
+    fromJSONResource,
     JSONResourceDecodeError (..),
 
     -- * text resources
-    text,
+    fromUtf8TextResource,
     TextResourceDecodeError (..),
   )
 where
@@ -34,6 +34,7 @@ import Data.Text.Encoding.Error
 import Dep.Has
 import Dep.Loader
 import Dep.Value
+import Data.ByteString
 
 type Ref v = MVar (Maybe v)
 
@@ -52,9 +53,9 @@ cache ref Value {value} = Value do
       v <- run value
       pure (Just v, v)
 
-json ::
-  forall m e v.
-  ( Has Loader m e,
+fromJSONResource ::
+  forall v m e.
+  ( Has (Loader ByteString) m e,
     Monad m,
     FromResource v,
     Data.Aeson.FromJSON v
@@ -62,7 +63,7 @@ json ::
   v ->
   e ->
   Value v m
-json ctor (dep -> loader) = Value do
+fromJSONResource ctor (dep -> loader) = Value do
   bytes <- load loader (resourceKey @v)
   case Data.Aeson.eitherDecodeStrict' bytes of
     Left errMsg -> throw (JSONResourceDecodeError (resourceKey @v) errMsg)
@@ -72,16 +73,16 @@ data JSONResourceDecodeError = JSONResourceDecodeError ResourceKey String derivi
 
 instance Exception JSONResourceDecodeError
 
-text ::
-  forall m e v.
-  ( Has Loader m e,
+fromUtf8TextResource ::
+  forall v m e.
+  ( Has (Loader ByteString) m e,
     Monad m,
     FromResource v
   ) =>
   (Text -> v) ->
   e ->
   Value v m
-text ctor (dep -> loader) = Value do
+fromUtf8TextResource ctor (dep -> loader) = Value do
   bytes <- load loader (resourceKey @v)
   case decodeUtf8' bytes of
     Left uex -> throw (TextResourceDecodeError (resourceKey @v) uex)

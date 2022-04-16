@@ -35,12 +35,12 @@ import GHC.Generics qualified
 import System.Console.GetOpt (getOpt)
 import Data.Foldable qualified
 
-newtype Loader m =
+newtype Loader v m =
 --  = KnownKeysLoader (MonoidalMap (ResourceKey, FileExtension) (Alt (MaybeT m) ByteString))
-   Loader { loadMaybe :: ResourceKey -> m (Maybe ByteString) }
+   Loader { loadMaybe :: ResourceKey -> m (Maybe v) }
    deriving G.Generic
 
-load :: Monad m => Loader m -> ResourceKey -> m ByteString
+load :: Monad m => Loader v m -> ResourceKey -> m v
 load loader key = do
   mb <- loadMaybe loader key
   case mb of
@@ -48,13 +48,13 @@ load loader key = do
     Just b -> pure b
 
 -- | The left 'Loader' is consulted first.
-instance Monad m => Semigroup (Loader m) where
+instance Monad m => Semigroup (Loader v m) where
   -- KnownKeysLoader l1 <> KnownKeysLoader l2 = KnownKeysLoader (l1 <> l2)
    Loader f <> Loader g = Loader \key -> do
      let Alt (MaybeT m) = (coerce f <> coerce g) key
      m
 
-instance Monad m => Monoid (Loader m) where
+instance Monad m => Monoid (Loader v m) where
   mempty = Loader \_ -> pure Nothing
 
 data ResourceKey = ResourceKey
@@ -85,22 +85,22 @@ newtype ResourceNotFound = ResourceNotFound ResourceKey deriving (Show)
 
 instance Exception ResourceNotFound
 
-resourceMapLoader :: Monad m => ResourceMap m -> Loader m
+resourceMapLoader :: Monad m => ResourceMap v m -> Loader v m
 resourceMapLoader (ResourceMap mm) = Loader \key -> do
   let Alt (MaybeT action) =  Dep.Loader.Internal.findWithDefault mempty key mm
   action
 
-resource :: forall r m . FromResource r => m (Maybe ByteString) -> ResourceMap m
+resource :: forall r v m. FromResource r => m (Maybe v) -> ResourceMap v m
 resource action = do
   let key = resourceKey @r
   ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT action))
 
-loaderResource :: forall r m . FromResource r => Loader m -> ResourceMap m
+loaderResource :: forall r v m . FromResource r => Loader v m -> ResourceMap v m
 loaderResource loader = do
   let key = resourceKey @r
   ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT (loadMaybe loader key)))
 
-fileResource :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap m
+fileResource :: forall r m. (FromResource r, MonadIO m) => FilePath -> ResourceMap ByteString m
 fileResource path = do
   let key = resourceKey @r
   ResourceMap $ Dep.Loader.Internal.singleton key (Alt (MaybeT (readFileMaybe path)))
@@ -121,7 +121,7 @@ dataDir dirPath filePath = pure (dirPath </> filePath)
 extendDataDir :: FilePath -> DataDir -> DataDir
 extendDataDir relDir dataDir filePath = dataDir (relDir </> filePath)
 
-dataDirLoader :: MonadIO m => [FileExtension] -> DataDir -> Loader m
+dataDirLoader :: MonadIO m => [FileExtension] -> DataDir -> Loader ByteString m
 dataDirLoader extensions base = Loader \ResourceKey {modulePath, datatypeName} -> do
   let go [] = do 
         pure Nothing
@@ -144,11 +144,11 @@ readFileMaybe absolute = do
       bytes <- liftIO $ Data.ByteString.readFile absolute
       pure (Just bytes)
 
-newtype ResourceMap m = ResourceMap (MonoidalMap ResourceKey (Alt (MaybeT m) ByteString))
+newtype ResourceMap v m = ResourceMap (MonoidalMap ResourceKey (Alt (MaybeT m) v))
 
 -- | Entries in the left map are consulted first.
-deriving newtype instance Monad m => Semigroup (ResourceMap m)
-deriving newtype instance Monad m => Monoid (ResourceMap m)
+deriving newtype instance Monad m => Semigroup (ResourceMap v m)
+deriving newtype instance Monad m => Monoid (ResourceMap v m)
 
 newtype MonoidalMap k a = MonoidalMap {getMonoidalMap :: Map.Map k a}
   deriving (Show, Read)
