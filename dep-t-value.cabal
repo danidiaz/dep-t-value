@@ -34,8 +34,10 @@ library
   import: common
   exposed-modules:     Dep.Value
                        Dep.Value.Cached
+                       Dep.Value.JSON
+                       Dep.Value.Text
                        Dep.Resource
-                       Dep.Resource.Loader
+                       Dep.Loader
   hs-source-dirs:      lib 
 
 test-suite dep-t-value-test

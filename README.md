@@ -10,13 +10,11 @@ Part of the [dep-t-framework](https://github.com/danidiaz/dep-t-framework).
 
 - Make your program logic take a `Value yourdatatype` record.
 
-- When assembling the global application environment, either
+- When assembling the global application environment,
 
     - Use `dataDirLoader` to define a `Loader` that searches for resource files by following the datatype's module path, and uses the dataype's name as file name.
 
-    - Use `resourceMapLoader` and `fileResource` to explicitly pair a resource file with your datatype. 
-
-- Finally, "wire" the `Value yourdatatype` by using `fromResource`, `fromJSONResource` or similar functions.
+    - Build the `Value yourdatatype` by using functions form `Dep.Value.JSON` or `Dep.Value.Text`.
 
 ## Links
 

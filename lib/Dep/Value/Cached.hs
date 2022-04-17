@@ -23,7 +23,6 @@ import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Cont
 import Dep.Has
-import Dep.Resource.Loader
 import Dep.Value
 import Data.ByteString
 import Data.Typeable

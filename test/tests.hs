@@ -19,7 +19,9 @@ import Test.Tasty.HUnit
 import Dep.Env
 import Dep.Value
 import Dep.Value.Cached
-import Dep.Resource.Loader
+import Dep.Value.JSON
+import Dep.Value.Text
+import Dep.Loader
 import Data.Functor.Identity
 import Data.Text
 import Data.ByteString
@@ -45,21 +47,18 @@ textResourceLoads :: Assertion
 textResourceLoads = do
     let loader :: Loader ByteString IO 
         loader = dataDirLoader ["zzz","txt"] $ dataDir "test" `extendDataDir` "conf"
-        v = fromUtf8TextResource Identity (loader `addDep` emptyEnv)
+        v = Dep.Value.Text.fromUtf8 Identity (load @(Identity Text) loader)
     Identity txt <- value v
     assertEqual "text loaded correctly" (Data.Text.pack "Lorem Ipsum") txt
 
 textResourcePrecedence :: Assertion
 textResourcePrecedence = do
     let loader :: Loader ByteString IO 
-        loader = dataDirLoader ["zzz","txt"] $ dataDir "test" `extendDataDir` "conf"
-        loader2 = resourceMapLoader 
-                        (fileResource @(Identity Text) "test/conf/Identity2.txt"  
-                            <> fileResource @(Identity Text) "test/conf/Identity3.txt")
-                  <> loader
-        v = fromUtf8TextResource Identity (loader2 `addDep` emptyEnv)
+        loader = dataDirLoader ["zzz","txt"] (dataDir "test" `extendDataDir` "conf2")
+                 <> dataDirLoader ["zzz","txt"] (dataDir "test" `extendDataDir` "conf")
+        v = Dep.Value.Text.fromUtf8 Identity (load @(Identity Text) loader)
     Identity txt <- value v
-    assertEqual "text loaded correctly" (Data.Text.pack "foo") txt
+    assertEqual "text loaded correctly" (Data.Text.pack "alternative text") txt
 
 valueIsCached :: Assertion
 valueIsCached = do
